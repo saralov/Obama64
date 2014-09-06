@@ -162,7 +162,7 @@ public final class Obama64 {
             swap(encodeTable, i-1, rand.nextInt(i));
 		
 		// 根据重排序后的编码基表初始化解码表
-		initBase_decode();
+		initDecodeTable();
 	}
 	
 	/**
@@ -180,7 +180,7 @@ public final class Obama64 {
 	/**
 	 * 根据编码基表，初始化解码参照表
 	 */
-	private void initBase_decode(){
+	private void initDecodeTable(){
 		Arrays.fill(decodeTable, -1);
 		for(int i=0; i<encodeTable.length; i++){
 			decodeTable[encodeTable[i]] = i;
@@ -190,7 +190,7 @@ public final class Obama64 {
 	/**
 	 * 根据解码参照表，初始化编码基表
 	 */
-	private void initCodeTable(){
+	private void initEncodeTable(){
 		for(int i=0; i<decodeTable.length; i++){
 			if(decodeTable[i] < 0)
 				continue;
@@ -205,7 +205,7 @@ public final class Obama64 {
 	 */
 	public void setDecodeTable(int[] decodeTable){
 		this.decodeTable = decodeTable;
-		initCodeTable();
+		initEncodeTable();
 	}
 	
 	/**
@@ -214,7 +214,7 @@ public final class Obama64 {
 	 */
 	public void setEncodeTable(byte[] encodeTable){
 		this.encodeTable = encodeTable;
-		initBase_decode();
+		initDecodeTable();
 	}
 	
 	private byte bluffCode(){
