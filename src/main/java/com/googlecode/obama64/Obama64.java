@@ -12,30 +12,30 @@ import java.util.Random;
 /**
  * 用于对字符进行编码/解码，功能类似Base64，可将字符编码为限定码表范围内，且不易识别的ASCII字符序列，
  * 并且可根据该编码序列进行解码还原。编解码速度与apache common codec提供的Base64相当，
- * 远快于JDK自带的sun的Base64实现
+ * 远快于JDK自带的sun的Base64实现.
  * 
  * Obama64可用于如下等场景：
- * 		a).需要将字符编码为URLSafe的情况：比如需要将字符信息作为URL的一部分，或者HTTP报文头的一部分
- * 		b).需要将字符进行弱加密的情况：cookie/URL中存放一些敏感信息，配置文件存放账号信息等
+ * 		a).需要将字符编码为URLSafe的情况：比如需要将字符信息作为URL的一部分，或者HTTP报文头的一部分.
+ * 		b).需要将字符进行弱加密的情况：cookie/URL中存放一些敏感信息，配置文件存放账号信息等.
  *
  * 相较Base64进行编解码的一些特殊功能：
  * 		a).Base64编码后字符长度为原串的4/3，即增加1/3长度。而使用Obama64.encode()编码也是增加1/3长度，
- * 	而使用Obama64.encodeAscii()编码单字节(ASCII)字符增加长度为1/6
- * 		b).提供编码扰乱功能，即相同字串可以编码成多个不同结果
- * 		C).提供简单的自定义加/解密钩子
+ * 	而使用Obama64.encodeAscii()编码单字节(ASCII)字符增加长度为1/6.
+ * 		b).提供编码扰乱功能，即相同字串可以编码成多个不同结果.
+ * 		C).提供简单的自定义加/解密钩子.
  * 
  * 基本原理：
  * 		a).我们知道，ASCII编码的字符串，其每个字节的值范围是0~127，而其他多字节编码方案(GBK,UTF-8等)的字符串，字节值范围为0~255。
  * 	当范围为0~127时，1位(bit)恰好能表示其mod 64的情况：0表示[0~64),1表示[64,127]。当范围为0~255时，则需要2位(bit)
- *  来进行表示，00表示[0~64)，01表示[64~128)，10表示[128~192)，11表示[192~255)
+ *  来进行表示，00表示[0~64)，01表示[64~128)，10表示[128~192)，11表示[192~255).
  * 		a).与Base64将原串每6位(bit)组成一个新字节(byte)不同: encode时，Obama64采取的方式是使用在原串
  * 	每3个字节(如果是encodeAscii，则是6个字节)前插入1个字节，使用这个字节低6位(bit)的0|1值记录后续3个字节
- * 	(encodeAscii则是6个字节)mod 64的情况，因为ASCII字串，而原串各字节都转换为mod 64后对应码表的值
- * 		b).decode时，则通过解码索引表找到编码字符mod 64前的值，然后根据其对应字节上记录的mod 64的情况，加上N*64还原到编码前的字节值
+ * 	(encodeAscii则是6个字节)mod 64的情况，因为ASCII字串，而原串各字节都转换为mod 64后对应码表的值.
+ * 		b).decode时，则通过解码索引表找到编码字符mod 64前的值，然后根据其对应字节上记录的mod 64的情况，加上N*64还原到编码前的字节值.
  * 
  * @author zhong qiu
  */
-public final class Obama64 {
+public class Obama64 {
 
 	/** 码表坐标掩码 */
 	private static final int MASK_64 = 0x3F;
@@ -51,7 +51,11 @@ public final class Obama64 {
 	
 	private final Random rand;
 	
-	/** 编码基表 */
+	/** 
+	 * 编码基表。
+	 * 原理，例如将字节x编码为y，则：
+	 * y = encodeTable[x%64]
+	 */
 	private byte encodeTable[] = {
 		// 默认序列
 	    'P', 'e', 'r', 'Q', 'f', 'w', '7', 'g', 'i', 'p', 	/*  0- 9 */
@@ -63,7 +67,12 @@ public final class Obama64 {
 	    'F', 'A', '_', '-'									/* 60-63 */  
 	};
 	
-	/** 解码参照表 */
+	/** 
+	 * 解码参照表，主要用于快速索引，解码时，通过该索引表可以快速反查字节编码前的mod64后的值。
+	 * 其下标值为编码后字符的ASCII值，而值为ASCII值在码表中对应下标。
+	 * 例如将字节x编码为y: y = encodeTable[x%64]
+	 * 则解码时：x = decodeTable[y]
+	 */
 	private int decodeTable[] = {
 		// 参照编码表默认序列的值序
 		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  			/*  0- 9 */
@@ -82,7 +91,7 @@ public final class Obama64 {
 	};
 	
 	/** 
-	 * 加密钩子, 默认实现 .
+	 * 默认加密钩子 .
 	 * 
 	 * 可以通过实现自己的Encrypt，覆盖encode()、decode()方法，
 	 * 并通过setEncrypt传递给Obama64来实现简单的自定义加解密过程
@@ -139,17 +148,44 @@ public final class Obama64 {
 		else
 			throw new IllegalArgumentException("Invalid Bluff Code:" + bluffCode);
 	}
+	
+	/**
+	 * 检查扰乱码有效性，作为编码结果的一部分，限制其值在编码表encodeTable值范围内
+	 * @param bluffCode 扰乱码
+	 * @return 如果扰乱码不符合规定则返回false，否则返回true
+	 */
+	private boolean checkBluffCode(byte bluffCode){
+		for(byte b : encodeTable){
+			if(b == bluffCode)
+				return true;
+		}
+		return false;
+	}
 
 	/**
 	 * 设置自定义的简单加/接密过程
 	 * @param encrypt
 	 */
 	public void setEncrypt(IEncrypt encrypt) {
-		boolean check = checkEncrypt(encrypt);
-		if(check)
+		if(checkEncrypt(encrypt))
 			this.encrypt = encrypt;
 		else
 			throw new IllegalArgumentException("Invalid Encrypt!");
+	}
+	
+	/**
+	 * 检查Encrypt的有效性
+	 * @param encrypt 用户自定义Encrypt
+	 * @return Encrypt合法则返回true，否则返回false
+	 */
+	private boolean checkEncrypt(IEncrypt encrypt){
+		byte en = 0;
+		for(byte b = 127; b>=0; b--){
+			en = encrypt.encode(b, DEF_BLUFF_CODE);
+			if(b != encrypt.decode(en, DEF_BLUFF_CODE))
+				return false;
+		}
+		return true;
 	}
 
 	/**
@@ -231,15 +267,12 @@ public final class Obama64 {
 			return content;
 		
 		int len = content.length;
-		
 		byte[] cArray = new byte[len + (int)Math.ceil(len/3.0d) + 1];
-		
 		if(doBluff){
 			cArray[0] = bluffCode();
 		}else{
 			cArray[0] = bluffCode;
 		}
-		
 		byte c = 0;
 		int n = 0;
 		int mark = 0;
@@ -249,17 +282,13 @@ public final class Obama64 {
 			mark = 1+i+segs;
 			for(int k=0; (k<3) && (pos<len); k++){
 				c = content[pos];
-				
 				if(c<0){
 					c = (byte)~c;
 					cArray[mark] |= (2<<(k<<1));
 				}
-				
 				n = encrypt.encode(c, cArray[0]);
 				n ^= k;
-				
 				cArray[mark] |= ((n>>>6)<<(k<<1)); 
-				
 				cArray[mark+k+1] = (byte)encodeTable[n & MASK_64];
 				pos++;
 			}
@@ -280,9 +309,7 @@ public final class Obama64 {
 			return content;
 		
 		int len = content.length;
-		
 		byte[] cArray = new byte[len - 1 - (int)Math.ceil((len-1)/4.0)];
-		
 		byte secret = content[0];
 		byte c = 0;
 		int mark = 0;
@@ -317,21 +344,16 @@ public final class Obama64 {
 	 * 如果不清楚待编码的字节序列是否是纯ASCII字符，那么应该选用encode()和decode()方法进行编/解码。
 	 */
 	public byte[] encodeAscii(byte[] content){
-		
 		if(content==null || content.length==0)
 			return null;
 		
 		int len = content.length;
-		
 		byte[] cArray = new byte[len + (int)Math.ceil(len/6.0d) + 1];
-		
 		if(doBluff){
 			cArray[0] = bluffCode();
 		}else{
 			cArray[0] = bluffCode;
 		}
-		
-		
 		byte c = 0;
 		int n = 0;
 		int mark = 0;
@@ -353,7 +375,6 @@ public final class Obama64 {
 		}
 		
 		return cArray;
-		
 	}
 	
 	/**
@@ -365,14 +386,11 @@ public final class Obama64 {
 	 * 
 	 */
 	public byte[] decodeAscii(byte[] content){
-		
 		if(content==null || content.length==0)
 			return null;
 		
 		int len = content.length;
-		
 		byte[] cArray = new byte[len - 1 - (int)Math.ceil((len-1)/7.0)];
-		
 		byte secret = content[0];
 		byte c = 0;
 		int mark = 0;
@@ -415,34 +433,6 @@ public final class Obama64 {
 				System.out.println("\t/* " + (loop-10) + " - " + (loop-1) + " */");
 		}
 		System.out.println();
-	}
-	
-	/**
-	 * 检查Encrypt的有效性
-	 * @param encrypt 用户自定义Encrypt
-	 * @return Encrypt合法则返回true，否则返回false
-	 */
-	private boolean checkEncrypt(IEncrypt encrypt){
-		byte en = 0;
-		for(byte b = 127; b>=0; b--){
-			en = encrypt.encode(b, DEF_BLUFF_CODE);
-			if(b != encrypt.decode(en, DEF_BLUFF_CODE))
-				return false;
-		}
-		return true;
-	}
-	
-	/**
-	 * 检查扰乱码有效性，作为编码结果的一部分，限制其值在编码表base_encode值范围内
-	 * @param bluffCode 扰乱码
-	 * @return 如果扰乱码不符合规定则返回false，否则返回true
-	 */
-	private boolean checkBluffCode(byte bluffCode){
-		for(byte b : encodeTable){
-			if(b == bluffCode)
-				return true;
-		}
-		return false;
 	}
 	
 	/**
