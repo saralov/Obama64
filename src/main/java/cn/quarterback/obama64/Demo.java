@@ -1,6 +1,6 @@
-package com.googlecode.obama64;
+package cn.quarterback.obama64;
 
-import com.googlecode.obama64.Obama64.IEncrypt;
+import cn.quarterback.obama64.Obama64.IEncrypt;
 
 /**
  * 使用示例

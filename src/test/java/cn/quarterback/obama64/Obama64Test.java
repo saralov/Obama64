@@ -1,4 +1,4 @@
-package com.googlecode.obama64;
+package cn.quarterback.obama64;
 
 import static org.junit.Assert.*;
 
@@ -6,6 +6,8 @@ import java.io.UnsupportedEncodingException;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import cn.quarterback.obama64.Obama64;
 
 public class Obama64Test {
 	
