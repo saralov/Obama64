@@ -8,7 +8,7 @@
   <packaging>jar</packaging>
 
   <name>obama64</name>
-  <url>http://maven.apache.org</url>
+  <url>quarterback.cn</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
